@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
 const MOCK_DISPATCH = [
   { id: 1, order_number: 'TA-00038', customer: 'John Moyo', phone: '+263 77 123 4567', address: '15 Avondale, Harare', zone: 'Harare', total: '$85.00', driver: 'Takudzwa M.', vehicle: 'Toyota Hilux ZH-123', status: 'dispatched' },
@@ -20,10 +20,20 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 
 export default function DispatchDashboard() {
   const [orders, setOrders] = useState(MOCK_DISPATCH)
-  const [currentTime, setCurrentTime] = useState(new Date())
+  // FIX: use null initial state to avoid hydration mismatch — only set after mount
+  const [timeStr, setTimeStr] = useState('')
+  const [dateStr, setDateStr] = useState('')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    setMounted(true)
+    const tick = () => {
+      const now = new Date()
+      setTimeStr(now.toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      setDateStr(now.toLocaleDateString('en-ZW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
   }, [])
 
@@ -34,7 +44,6 @@ export default function DispatchDashboard() {
     delivered: orders.filter(o => o.status === 'delivered').length,
   }
 
-  // Group by zone
   const byZone = orders.reduce<Record<string, typeof orders>>((acc, o) => {
     acc[o.zone] = acc[o.zone] || []
     acc[o.zone].push(o)
@@ -66,12 +75,13 @@ export default function DispatchDashboard() {
             ))}
           </div>
         </div>
-        <div className="text-2xl font-bold text-ta-gold tracking-wider">
-          {currentTime.toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        {/* Only render time after mount to avoid hydration mismatch */}
+        <div className="text-2xl font-bold text-ta-gold tracking-wider min-w-[10rem] text-right">
+          {mounted ? timeStr : ''}
         </div>
       </div>
 
-      {/* Two-panel layout: Orders + Driver Board */}
+      {/* Two-panel layout */}
       <div className="p-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Orders by Zone */}
         <div className="xl:col-span-2 space-y-6">
@@ -154,8 +164,6 @@ export default function DispatchDashboard() {
                 )
               })}
             </div>
-
-            {/* Vehicles */}
             <h3 className="text-ta-gold font-bold text-sm tracking-widest uppercase mt-6 mb-4">🚗 Vehicles</h3>
             <div className="space-y-2">
               {VEHICLES.map(v => {
@@ -175,7 +183,7 @@ export default function DispatchDashboard() {
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900/90 border-t border-gray-800 px-8 py-2 flex justify-between text-xs text-gray-500">
         <span>Twin Angels International — Dispatch Operations</span>
         <span>Auto-refreshes every 30 seconds</span>
-        <span>{currentTime.toLocaleDateString('en-ZW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        <span>{mounted ? dateStr : ''}</span>
       </div>
     </div>
   )

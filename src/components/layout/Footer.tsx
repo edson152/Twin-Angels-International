@@ -79,7 +79,6 @@ export default function Footer() {
                 { label: 'Privacy Policy', href: '/privacy' },
                 { label: 'Returns Policy', href: '/returns' },
                 { label: 'Contact Us', href: '/contact' },
-                { label: 'Admin Panel', href: '/admin' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
