@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
-import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 
 const playfair = Playfair_Display({
@@ -23,6 +22,7 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
     default: 'Twin Angels International Development',
     template: '%s | Twin Angels International',
@@ -38,7 +38,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_ZW',
-    url: process.env.NEXT_PUBLIC_APP_URL,
     siteName: 'Twin Angels International',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630 }],
   },
@@ -61,7 +60,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         {children}
-        <Analytics />
       </body>
     </html>
   )

@@ -18,29 +18,49 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 
 export default function WarehouseDashboard() {
   const [orders, setOrders] = useState(MOCK_ORDERS)
-  const [currentTime, setCurrentTime] = useState(new Date())
-  const [lastRefresh, setLastRefresh] = useState(new Date())
+  const [timeStr, setTimeStr] = useState('')
+  const [dateStr, setDateStr] = useState('')
+  const [refreshStr, setRefreshStr] = useState('')
+  const [mounted, setMounted] = useState(false)
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch('/api/warehouse/orders')
+      const res = await fetch('/api/orders')
       if (res.ok) {
         const data = await res.json()
-        setOrders(data)
+        const warehouseOrders = (data.orders || []).filter((o: any) =>
+          ['processing', 'warehouse_picking', 'ready_for_dispatch'].includes(o.status)
+        ).map((o: any) => ({
+          id: o.id || o.order_number,
+          order_number: o.order_number,
+          customer: `${o.customer_first_name} ${o.customer_last_name}`,
+          items: (o.items || []).map((i: any) => `${i.name} ×${i.quantity}`).join(', ') || 'See order',
+          zone: o.delivery_zone,
+          status: o.status,
+          is_urgent: false,
+          created_at: o.created_at,
+          picker: null,
+        }))
+        if (warehouseOrders.length > 0) setOrders(warehouseOrders)
       }
     } catch {
       // Keep mock data on error
     }
-    setLastRefresh(new Date())
+    setRefreshStr(new Date().toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
   }, [])
 
   useEffect(() => {
-    const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000)
-    const refreshTimer = setInterval(fetchOrders, 30000) // refresh every 30s
-    return () => {
-      clearInterval(clockTimer)
-      clearInterval(refreshTimer)
+    setMounted(true)
+    const tick = () => {
+      const now = new Date()
+      setTimeStr(now.toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      setDateStr(now.toLocaleDateString('en-ZW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
     }
+    tick()
+    fetchOrders()
+    const clockTimer = setInterval(tick, 1000)
+    const refreshTimer = setInterval(fetchOrders, 30000)
+    return () => { clearInterval(clockTimer); clearInterval(refreshTimer) }
   }, [fetchOrders])
 
   const urgentOrders = orders.filter(o => o.is_urgent)
@@ -60,38 +80,24 @@ export default function WarehouseDashboard() {
       <div className="bg-gray-900 border-b border-gray-800 px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-ta-gold rounded flex items-center justify-center font-bold text-black">
-              TA
-            </div>
+            <div className="w-8 h-8 bg-ta-gold rounded flex items-center justify-center font-bold text-black">TA</div>
             <div>
               <div className="text-white font-bold text-lg leading-none">WAREHOUSE</div>
               <div className="text-ta-gold text-xs tracking-widest">OPERATIONS CENTRE</div>
             </div>
           </div>
           <div className="flex gap-4 text-sm">
-            <span className="px-3 py-1 bg-yellow-900/40 border border-yellow-700/50 text-yellow-400 rounded">
-              QUEUED: {stats.queued}
-            </span>
-            <span className="px-3 py-1 bg-blue-900/40 border border-blue-700/50 text-blue-400 rounded">
-              PICKING: {stats.picking}
-            </span>
-            <span className="px-3 py-1 bg-green-900/40 border border-green-700/50 text-green-400 rounded">
-              READY: {stats.ready}
-            </span>
+            <span className="px-3 py-1 bg-yellow-900/40 border border-yellow-700/50 text-yellow-400 rounded">QUEUED: {stats.queued}</span>
+            <span className="px-3 py-1 bg-blue-900/40 border border-blue-700/50 text-blue-400 rounded">PICKING: {stats.picking}</span>
+            <span className="px-3 py-1 bg-green-900/40 border border-green-700/50 text-green-400 rounded">READY: {stats.ready}</span>
             {stats.urgent > 0 && (
-              <span className="px-3 py-1 bg-red-900/40 border border-red-700/50 text-red-400 rounded animate-pulse">
-                🔴 URGENT: {stats.urgent}
-              </span>
+              <span className="px-3 py-1 bg-red-900/40 border border-red-700/50 text-red-400 rounded animate-pulse">🔴 URGENT: {stats.urgent}</span>
             )}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-ta-gold tracking-wider">
-            {currentTime.toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </div>
-          <div className="text-gray-500 text-xs mt-1">
-            Last refresh: {lastRefresh.toLocaleTimeString('en-ZW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </div>
+        <div className="text-right min-w-[10rem]">
+          <div className="text-2xl font-bold text-ta-gold tracking-wider">{mounted ? timeStr : ''}</div>
+          <div className="text-gray-500 text-xs mt-1">{mounted && refreshStr ? `Last refresh: ${refreshStr}` : ''}</div>
         </div>
       </div>
 
@@ -100,57 +106,45 @@ export default function WarehouseDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {sortedOrders.map((order, idx) => {
             const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.processing
-            const timeSince = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000)
+            const timeSince = mounted ? Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000) : 0
             return (
-              <div
-                key={order.id}
-                className={`relative border rounded-lg p-5 ${config.bg} ${order.is_urgent ? 'border-red-500 shadow-lg shadow-red-900/30' : ''}`}
-              >
-                {/* Urgent badge */}
+              <div key={order.id}
+                className={`relative border rounded-lg p-5 ${config.bg} ${order.is_urgent ? 'border-red-500 shadow-lg shadow-red-900/30' : ''}`}>
                 {order.is_urgent && (
                   <div className="absolute -top-2.5 left-4 bg-red-600 text-white text-xs font-bold px-3 py-0.5 rounded-full animate-pulse">
                     ⚡ URGENT
                   </div>
                 )}
-
-                {/* FIFO position */}
                 <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-800/60 flex items-center justify-center text-gray-400 text-xs font-bold">
                   #{idx + 1}
                 </div>
-
                 <div className="mb-3">
                   <div className="flex items-center gap-3 mb-1">
                     <span className="text-ta-gold font-bold text-lg tracking-wider">{order.order_number}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${config.color}`}>
-                      {config.label}
-                    </span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${config.color}`}>{config.label}</span>
                   </div>
                   <div className="text-gray-300 text-sm">{order.customer}</div>
                 </div>
-
                 <div className="text-gray-400 text-sm mb-3 leading-relaxed border-t border-gray-700/50 pt-3">
                   <span className="text-gray-500 text-xs uppercase tracking-wider block mb-1">Items</span>
                   {order.items}
                 </div>
-
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     <span className="text-gray-500">📍 {order.zone}</span>
-                    <span className="text-gray-600">⏱ {timeSince}m ago</span>
+                    {mounted && <span className="text-gray-600">⏱ {timeSince}m ago</span>}
                   </div>
                   <div>
-                    {order.picker ? (
-                      <span className="text-green-400 font-semibold">👤 {order.picker}</span>
-                    ) : (
-                      <span className="text-gray-600 italic">Unassigned</span>
-                    )}
+                    {order.picker
+                      ? <span className="text-green-400 font-semibold">👤 {order.picker}</span>
+                      : <span className="text-gray-600 italic">Unassigned</span>
+                    }
                   </div>
                 </div>
               </div>
             )
           })}
         </div>
-
         {orders.length === 0 && (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -165,7 +159,7 @@ export default function WarehouseDashboard() {
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900/90 border-t border-gray-800 px-8 py-2 flex justify-between items-center text-xs text-gray-500">
         <span>FIFO Order Processing — Urgent orders override queue priority</span>
         <span>Auto-refreshes every 30 seconds</span>
-        <span>{currentTime.toLocaleDateString('en-ZW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        <span>{mounted ? dateStr : ''}</span>
       </div>
     </div>
   )

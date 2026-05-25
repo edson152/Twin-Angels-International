@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
-import { sendWhatsApp, WHATSAPP_TEMPLATES } from '@/lib/whatsapp'
-
-function generateOrderNumber(): string {
-  const num = Math.floor(Math.random() * 90000) + 10000
-  return `TA-${num}`
-}
+import { ordersStore, generateOrderNumber } from '@/lib/ordersStore'
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,49 +12,26 @@ export async function POST(req: NextRequest) {
 
     const order_number = generateOrderNumber()
 
-    // Insert order (in production, use a transaction)
-    const orderResult = await query(
-      `INSERT INTO orders (
-        order_number, customer_first_name, customer_last_name,
-        customer_email, customer_phone, customer_address,
-        delivery_zone, payment_method, currency,
-        subtotal, delivery_fee, total, status, notes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending',$13)
-      RETURNING id, order_number`,
-      [
-        order_number,
-        customer.firstName,
-        customer.lastName,
-        customer.email,
-        customer.phone,
-        customer.address,
-        delivery_zone,
-        payment_method,
-        currency,
-        subtotal,
-        delivery_fee,
-        total,
-        customer.notes || null,
-      ]
-    )
-
-    const orderId = orderResult.rows[0].id
-
-    // Insert order items
-    for (const item of items) {
-      await query(
-        `INSERT INTO order_items (order_id, product_id, product_name, quantity, price, currency)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [orderId, item.id, item.name, item.quantity, currency === 'USD' ? item.price_usd : item.price_zig, currency]
-      )
+    ordersStore[order_number] = {
+      order_number,
+      status: 'pending',
+      customer_first_name: customer.firstName,
+      customer_last_name: customer.lastName,
+      customer_email: customer.email,
+      customer_phone: customer.phone,
+      customer_address: customer.address,
+      delivery_zone,
+      payment_method,
+      currency,
+      subtotal,
+      delivery_fee,
+      total,
+      notes: customer.notes || null,
+      items,
+      created_at: new Date().toISOString(),
+      estimated_delivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      driver: null,
     }
-
-    // Send WhatsApp notification
-    const totalStr = `${currency === 'USD' ? '$' : 'ZiG'} ${total.toLocaleString()}`
-    await sendWhatsApp({
-      to: customer.phone,
-      message: WHATSAPP_TEMPLATES.orderConfirmed(order_number, totalStr),
-    })
 
     return NextResponse.json({ order_number, message: 'Order placed successfully' }, { status: 201 })
   } catch (error) {
@@ -69,34 +40,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // Admin endpoint - list all orders
-    const { searchParams } = new URL(req.url)
-    const status = searchParams.get('status')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = 20
-    const offset = (page - 1) * limit
-
-    let queryText = `
-      SELECT o.*, 
-        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
-      FROM orders o
-    `
-    const params: unknown[] = []
-
-    if (status) {
-      queryText += ` WHERE o.status = $1`
-      params.push(status)
-    }
-
-    queryText += ` ORDER BY o.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
-    params.push(limit, offset)
-
-    const result = await query(queryText, params)
-    return NextResponse.json({ orders: result.rows, page, limit })
+    const orders = Object.values(ordersStore).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    return NextResponse.json({ orders, page: 1, limit: 20 })
   } catch (error) {
-    console.error('List orders error:', error)
     return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
   }
 }

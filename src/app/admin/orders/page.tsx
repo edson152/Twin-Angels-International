@@ -1,160 +1,202 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
-import { ORDER_STATUS_LABELS, ORDER_STATUSES } from '@/lib/constants'
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 
-const MOCK_ORDERS = [
-  { id: 1, order_number: 'TA-00047', customer: 'John Moyo', email: 'john@example.com', phone: '+263 77 123 4567', zone: 'Harare', total: 85, currency: 'USD', status: 'pending', payment: 'ecocash', items: 3, created_at: '2024-01-15T08:30:00', is_urgent: false },
-  { id: 2, order_number: 'TA-00046', customer: 'Sarah Ndlovu', email: 'sarah@example.com', phone: '+263 71 987 6543', zone: 'Bulawayo', total: 420, currency: 'USD', status: 'processing', payment: 'bank_transfer', items: 2, created_at: '2024-01-15T07:45:00', is_urgent: true },
-  { id: 3, order_number: 'TA-00045', customer: 'Michael Choto', email: 'mike@example.com', phone: '+263 73 555 8901', zone: 'Harare', total: 135, currency: 'USD', status: 'dispatched', payment: 'ecocash', items: 1, created_at: '2024-01-15T06:00:00', is_urgent: false },
-  { id: 4, order_number: 'TA-00044', customer: 'Grace Mutasa', email: 'grace@example.com', phone: '+263 77 222 3344', zone: 'Mutare', total: 1200, currency: 'USD', status: 'payment_confirmed', payment: 'visa_mastercard', items: 1, created_at: '2024-01-14T16:20:00', is_urgent: false },
-  { id: 5, order_number: 'TA-00043', customer: 'Peter Dube', email: 'peter@example.com', phone: '+263 73 111 2233', zone: 'Gweru', total: 320, currency: 'USD', status: 'delivered', payment: 'onemoney', items: 4, created_at: '2024-01-13T10:00:00', is_urgent: false },
-]
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-yellow-900/30 text-yellow-400 border-yellow-700/50',
-  payment_pending: 'bg-orange-900/30 text-orange-400 border-orange-700/50',
-  payment_confirmed: 'bg-blue-900/30 text-blue-400 border-blue-700/50',
-  processing: 'bg-indigo-900/30 text-indigo-400 border-indigo-700/50',
-  warehouse_picking: 'bg-purple-900/30 text-purple-400 border-purple-700/50',
-  ready_for_dispatch: 'bg-cyan-900/30 text-cyan-400 border-cyan-700/50',
-  dispatched: 'bg-teal-900/30 text-teal-400 border-teal-700/50',
-  out_for_delivery: 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50',
-  delivered: 'bg-green-900/30 text-green-400 border-green-700/50',
-  cancelled: 'bg-red-900/30 text-red-400 border-red-700/50',
+const STATUS_OPTIONS = ['pending', 'payment_confirmed', 'processing', 'warehouse_picking', 'ready_for_dispatch', 'dispatched', 'out_for_delivery', 'delivered', 'cancelled']
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-900/20 text-yellow-400 border-yellow-700/40',
+  payment_confirmed: 'bg-green-900/20 text-green-400 border-green-700/40',
+  processing: 'bg-blue-900/20 text-blue-400 border-blue-700/40',
+  warehouse_picking: 'bg-indigo-900/20 text-indigo-400 border-indigo-700/40',
+  ready_for_dispatch: 'bg-orange-900/20 text-orange-400 border-orange-700/40',
+  dispatched: 'bg-purple-900/20 text-purple-400 border-purple-700/40',
+  out_for_delivery: 'bg-cyan-900/20 text-cyan-400 border-cyan-700/40',
+  delivered: 'bg-emerald-900/20 text-emerald-400 border-emerald-700/40',
+  cancelled: 'bg-red-900/20 text-red-400 border-red-700/40',
 }
 
 export default function AdminOrdersPage() {
-  const [filterStatus, setFilterStatus] = useState('')
-  const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<number[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('')
+  const [selected, setSelected] = useState<any | null>(null)
 
-  const filtered = MOCK_ORDERS.filter(o => {
-    if (filterStatus && o.status !== filterStatus) return false
-    if (search && !o.order_number.toLowerCase().includes(search.toLowerCase()) && !o.customer.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
+  const loadOrders = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/orders')
+      if (res.ok) {
+        const data = await res.json()
+        setOrders(data.orders || [])
+      }
+    } catch (e) {
+      toast.error('Could not load orders')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadOrders() }, [])
+
+  const updateStatus = async (orderNumber: string, status: string) => {
+    try {
+      const res = await fetch(`/api/orders/${orderNumber}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        toast.success('Order status updated')
+        loadOrders()
+        if (selected?.order_number === orderNumber) setSelected((s: any) => ({ ...s, status }))
+      }
+    } catch {
+      toast.error('Failed to update status')
+    }
+  }
+
+  const filtered = filter ? orders.filter(o => o.status === filter) : orders
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-gray-400 hover:text-white text-sm transition-colors">← Dashboard</Link>
-          <h1 className="font-bold text-white">Orders</h1>
+          <Link href="/admin" className="text-gray-400 hover:text-white text-sm">← Dashboard</Link>
+          <h1 className="font-bold">Orders</h1>
+          <span className="text-gray-500 text-sm font-mono">{orders.length} total</span>
         </div>
-        <div className="text-gray-500 text-sm">{filtered.length} orders</div>
+        <button onClick={loadOrders} className="text-sm text-gray-400 hover:text-white border border-gray-700 px-3 py-1.5 rounded transition-colors">⟳ Refresh</button>
       </div>
 
       <div className="p-6">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <input
-            type="text"
-            placeholder="Search order # or customer..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="bg-gray-900 border border-gray-700 text-white px-4 py-2 rounded text-sm focus:outline-none focus:border-ta-gold w-64"
-          />
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="bg-gray-900 border border-gray-700 text-white px-4 py-2 rounded text-sm focus:outline-none focus:border-ta-gold"
-          >
-            <option value="">All Statuses</option>
-            {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-          {selected.length > 0 && (
-            <div className="flex gap-2 ml-auto">
-              <button className="bg-blue-900/30 border border-blue-700/50 text-blue-400 px-4 py-2 rounded text-sm hover:bg-blue-900/50 transition-colors">
-                Mark as Processing ({selected.length})
+        {/* Status filters */}
+        <div className="flex gap-2 flex-wrap mb-6">
+          <button onClick={() => setFilter('')}
+            className={`text-xs px-3 py-1.5 rounded border font-semibold transition-colors ${!filter ? 'bg-ta-gold text-white border-ta-gold' : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500'}`}>
+            All ({orders.length})
+          </button>
+          {STATUS_OPTIONS.map(s => {
+            const count = orders.filter(o => o.status === s).length
+            if (count === 0) return null
+            return (
+              <button key={s} onClick={() => setFilter(s)}
+                className={`text-xs px-3 py-1.5 rounded border font-semibold capitalize transition-colors ${filter === s ? 'bg-ta-gold text-white border-ta-gold' : `${STATUS_COLORS[s]} hover:opacity-80`}`}>
+                {s.replace(/_/g, ' ')} ({count})
               </button>
-              <button className="bg-red-900/30 border border-red-700/50 text-red-400 px-4 py-2 rounded text-sm hover:bg-red-900/50 transition-colors">
-                Cancel Selected
-              </button>
-            </div>
-          )}
+            )
+          })}
         </div>
 
-        {/* Table */}
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 bg-gray-900/50">
-                <th className="px-4 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    onChange={e => setSelected(e.target.checked ? filtered.map(o => o.id) : [])}
-                    className="accent-ta-gold"
-                  />
-                </th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider">Order</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider hidden md:table-cell">Zone</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider">Total</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider hidden lg:table-cell">Date</th>
-                <th className="px-4 py-3 text-left text-gray-500 font-mono text-xs uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(order => (
-                <tr key={order.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(order.id)}
-                      onChange={e => setSelected(e.target.checked ? [...selected, order.id] : selected.filter(id => id !== order.id))}
-                      className="accent-ta-gold"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-ta-gold font-mono font-bold">{order.order_number}</span>
-                      {order.is_urgent && <span className="text-xs bg-red-900/50 text-red-400 border border-red-700/50 px-1.5 py-0.5 rounded-full">🔴 URGENT</span>}
-                    </div>
-                    <div className="text-gray-600 text-xs mt-0.5">{order.items} items · {order.payment}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-gray-200">{order.customer}</div>
-                    <div className="text-gray-500 text-xs">{order.phone}</div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{order.zone}</td>
-                  <td className="px-4 py-3 font-bold text-white">${order.total}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${STATUS_COLOR[order.status] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell">
-                    {new Date(order.created_at).toLocaleDateString('en-ZW', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Link href={`/admin/orders/${order.order_number}`} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded transition-colors">View</Link>
-                      {order.status === 'pending' && (
-                        <button className="text-xs bg-green-900/30 hover:bg-green-900/50 text-green-400 border border-green-700/30 px-2 py-1 rounded transition-colors">
-                          Confirm Pay
-                        </button>
-                      )}
-                      {order.status === 'ready_for_dispatch' && (
-                        <button className="text-xs bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-700/30 px-2 py-1 rounded transition-colors">
-                          Dispatch
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="text-center py-20 text-gray-500">Loading orders...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-4xl mb-3">📋</div>
+            <p className="text-gray-500">No orders yet. Orders placed through the store will appear here.</p>
+            <p className="text-gray-600 text-xs mt-2">Try placing a test order from the <Link href="/products" className="text-ta-gold hover:underline">products page</Link>.</p>
+          </div>
+        ) : (
+          <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase">Order #</th>
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase hidden md:table-cell">Customer</th>
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase">Total</th>
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase">Status</th>
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase hidden lg:table-cell">Date</th>
+                  <th className="text-left text-gray-500 px-4 py-3 font-mono text-xs uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-16 text-gray-600">No orders found.</div>
-          )}
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map(order => (
+                  <tr key={order.order_number} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                    <td className="px-4 py-3 font-mono font-bold text-ta-gold">{order.order_number}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="text-gray-300">{order.customer_first_name} {order.customer_last_name}</div>
+                      <div className="text-gray-600 text-xs">{order.customer_phone}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold">
+                      {order.currency === 'USD' ? '$' : 'ZiG'} {Number(order.total).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded border font-semibold capitalize ${STATUS_COLORS[order.status] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                        {order.status?.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        <button onClick={() => setSelected(order)}
+                          className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded">View</button>
+                        <select
+                          value={order.status}
+                          onChange={e => updateStatus(order.order_number, e.target.value)}
+                          className="text-xs bg-gray-800 border border-gray-700 text-gray-300 px-1 py-1 rounded focus:outline-none focus:border-ta-gold">
+                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Order Detail Modal */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-ta-gold font-mono text-lg">{selected.order_number}</h2>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-800 rounded p-3">
+                  <div className="text-gray-500 text-xs mb-1">Customer</div>
+                  <div className="text-white font-semibold">{selected.customer_first_name} {selected.customer_last_name}</div>
+                  <div className="text-gray-400">{selected.customer_email}</div>
+                  <div className="text-gray-400">{selected.customer_phone}</div>
+                </div>
+                <div className="bg-gray-800 rounded p-3">
+                  <div className="text-gray-500 text-xs mb-1">Order Info</div>
+                  <div className="text-ta-gold font-bold font-mono">{selected.currency === 'USD' ? '$' : 'ZiG'} {Number(selected.total).toLocaleString()}</div>
+                  <div className="text-gray-400 capitalize">{selected.payment_method?.replace(/_/g, ' ')}</div>
+                  <div className="text-gray-400">{selected.delivery_zone}</div>
+                </div>
+              </div>
+              <div className="bg-gray-800 rounded p-3">
+                <div className="text-gray-500 text-xs mb-2">Delivery Address</div>
+                <div className="text-gray-300">{selected.customer_address}</div>
+              </div>
+              <div className="bg-gray-800 rounded p-3">
+                <div className="text-gray-500 text-xs mb-2">Items</div>
+                {(selected.items || []).map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between text-gray-300 py-1 border-b border-gray-700/50 last:border-0">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span className="font-mono">${item.price_usd || item.price || 0}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="block text-gray-400 text-xs mb-1">Update Status</label>
+                <select
+                  value={selected.status}
+                  onChange={e => updateStatus(selected.order_number, e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-ta-gold">
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
