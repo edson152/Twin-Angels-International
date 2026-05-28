@@ -1,111 +1,144 @@
 'use client'
-import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import {
-  FiHome, FiShoppingBag, FiPackage, FiImage, FiTag,
-  FiMap, FiCreditCard, FiTruck, FiSettings, FiMonitor, FiLogOut
-} from 'react-icons/fi'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useAdminStore } from '@/lib/adminStore'
 
 const NAV = [
-  { label: 'Dashboard', href: '/admin', icon: FiHome },
-  { label: 'Orders', href: '/admin/orders', icon: FiShoppingBag },
-  { label: 'Products', href: '/admin/products', icon: FiPackage },
-  { label: 'Banners', href: '/admin/banners', icon: FiImage },
-  { label: 'Promotions', href: '/admin/promotions', icon: FiTag },
-  { label: 'Delivery Zones', href: '/admin/delivery', icon: FiMap },
-  { label: 'Payments', href: '/admin/payments', icon: FiCreditCard },
-  { label: 'Drivers', href: '/admin/drivers', icon: FiTruck },
-  { label: 'Settings', href: '/admin/settings', icon: FiSettings },
-]
-
-const TV = [
-  { label: 'Warehouse TV', href: '/warehouse', icon: FiMonitor },
-  { label: 'Dispatch TV', href: '/dispatch', icon: FiMonitor },
+  { href: '/admin',             icon: '📊', label: 'Dashboard',           exact: true  },
+  { href: '/admin/orders',      icon: '📋', label: 'Orders'                            },
+  { href: '/admin/products',    icon: '🛍️', label: 'Products'                          },
+  { href: '/admin/banners',     icon: '🖼️', label: 'Banners'                           },
+  { href: '/admin/payments',    icon: '✅', label: 'Payments'                          },
+  { href: '/admin/promotions',  icon: '🎯', label: 'Promotions'                        },
+  { href: '/admin/delivery',    icon: '🗺️', label: 'Delivery Zones'                    },
+  { href: '/admin/drivers',     icon: '🚚', label: 'Drivers'                           },
+  { href: '/admin/settings',    icon: '⚙️', label: 'Settings'                          },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, logout, isAdmin } = useAuth()
-  const router = useRouter()
-  const pathname = usePathname()
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const { settings } = useAdminStore()
+  const [mounted,  setMounted]  = useState(false)
+  const [authed,   setAuthed]   = useState(false)
+  const [sideOpen, setSideOpen] = useState(false)
 
+  /* ── auth check ─────────────────────────────────────────────── */
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      router.replace('/account')
-    }
-  }, [loading, isAdmin, router])
+    setMounted(true)
+    try {
+      const raw = localStorage.getItem('ta_user')
+      if (raw) {
+        const u = JSON.parse(raw)
+        if (u?.role === 'admin') { setAuthed(true); return }
+      }
+    } catch {}
+    router.replace('/account')
+  }, [router])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-ta-gold border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading admin...</p>
-        </div>
-      </div>
-    )
+  const logout = () => {
+    localStorage.removeItem('ta_user')
+    router.replace('/account')
   }
 
-  if (!isAdmin) return null
+  if (!mounted || !authed) return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-gray-500 text-sm animate-pulse">Verifying access…</div>
+    </div>
+  )
+
+  const isActive = (href: string, exact?: boolean) =>
+    exact ? pathname === href : pathname.startsWith(href)
 
   return (
     <div className="min-h-screen bg-gray-950 flex">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col fixed top-0 bottom-0 left-0 z-40">
+
+      {/* ── Mobile overlay ──────────────────────────────────────── */}
+      {sideOpen && (
+        <div className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+          onClick={() => setSideOpen(false)} />
+      )}
+
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      <aside className={`
+        fixed top-0 left-0 h-full w-60 bg-gray-900 border-r border-gray-800 z-40
+        flex flex-col transition-transform duration-200
+        ${sideOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:static lg:flex
+      `}>
         {/* Logo */}
-        <div className="px-5 py-4 border-b border-gray-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-ta-gold rounded flex items-center justify-center font-bold text-black text-sm">TA</div>
-            <div>
-              <div className="text-white font-bold text-sm leading-none">Twin Angels</div>
-              <div className="text-ta-gold text-xs">Admin Panel</div>
+        <div className="px-5 py-5 border-b border-gray-800 flex items-center gap-3">
+          {mounted && settings.logo
+            ? <img src={settings.logo} alt="" className="h-7 w-auto object-contain" />
+            : <div className="w-7 h-7 bg-yellow-500 rounded flex items-center justify-center text-black font-bold text-xs">
+                {settings.logo_text || 'TA'}
+              </div>
+          }
+          <div>
+            <div className="text-white font-bold text-sm leading-none">
+              {settings.site_name?.split(' ').slice(0,2).join(' ') || 'Twin Angels'}
             </div>
+            <div className="text-yellow-500 text-xs mt-0.5">Admin Panel</div>
           </div>
+          <button onClick={() => setSideOpen(false)}
+            className="ml-auto text-gray-600 hover:text-white lg:hidden text-xl leading-none">×</button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
-          {NAV.map(({ label, href, icon: Icon }) => {
-            const active = pathname === href
+        {/* Nav links */}
+        <nav className="flex-1 py-3 overflow-y-auto">
+          {NAV.map(item => {
+            const active = isActive(item.href, item.exact)
             return (
-              <Link key={href} href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${active ? 'bg-ta-gold text-white font-semibold' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
-                <Icon size={16} />
-                {label}
+              <Link key={item.href} href={item.href}
+                onClick={() => setSideOpen(false)}
+                className={`
+                  flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors
+                  ${active
+                    ? 'bg-yellow-500/10 text-yellow-400 border-r-2 border-yellow-500'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'}
+                `}>
+                <span className="text-base w-5 text-center">{item.icon}</span>
+                {item.label}
               </Link>
             )
           })}
-
-          <div className="pt-3 pb-1 px-3">
-            <p className="text-gray-600 text-xs font-mono uppercase tracking-wider">TV Dashboards</p>
-          </div>
-          {TV.map(({ label, href, icon: Icon }) => (
-            <Link key={href} href={href} target="_blank"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-              <Icon size={16} />
-              {label} ↗
-            </Link>
-          ))}
         </nav>
 
-        {/* User + logout */}
-        <div className="px-3 py-4 border-t border-gray-800 space-y-1">
-          <Link href="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-            🌐 View Store
+        {/* Bottom */}
+        <div className="px-5 py-4 border-t border-gray-800 space-y-2">
+          <Link href="/" target="_blank"
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-white transition-colors">
+            <span>🌐</span> View Store
           </Link>
           <button onClick={logout}
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-900/20 transition-colors">
-            <FiLogOut size={16} /> Sign Out ({user?.first_name})
+            className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors w-full text-left">
+            <span>🚪</span> Logout
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 ml-56 min-h-screen overflow-auto">
-        {children}
-      </main>
+      {/* ── Main ────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Mobile topbar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800 sticky top-0 z-20">
+          <button onClick={() => setSideOpen(true)}
+            className="text-gray-400 hover:text-white p-1">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="text-white font-semibold text-sm">
+            {NAV.find(n => isActive(n.href, n.exact))?.label || 'Admin'}
+          </span>
+        </div>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

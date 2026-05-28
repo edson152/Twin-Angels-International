@@ -113,10 +113,15 @@ export default function Footer() {
       <div className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-600">
           <p>© {new Date().getFullYear()} {siteName}. All rights reserved.</p>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <Link href="/admin" className="hover:text-ta-gold transition-colors">Admin</Link>
             <span>•</span>
             <span>Built in Zimbabwe 🇿🇼</span>
+            <span>•</span>
+            <a href="mailto:edsonnyoni92@gmail.com"
+              className="hover:text-ta-gold transition-colors">
+              Developed by edsonnyoni92@gmail.com
+            </a>
           </div>
         </div>
       </div>

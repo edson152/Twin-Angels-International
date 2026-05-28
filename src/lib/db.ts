@@ -1,44 +1,8 @@
-import { Pool } from 'pg'
+// Database stub - PostgreSQL removed, using in-memory stores instead
+// Replace this with a real DB connection when ready for production
 
-const globalForPg = global as unknown as { pgPool: Pool }
-
-const pool =
-  globalForPg.pgPool ||
-  new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPg.pgPool = pool
-
-export default pool
-
-export async function query(text: string, params?: unknown[]) {
-  const start = Date.now()
-  const res = await pool.query(text, params)
-  const duration = Date.now() - start
-  if (process.env.NODE_ENV === 'development') {
-    console.log('executed query', { text: text.slice(0, 80), duration, rows: res.rowCount })
-  }
-  return res
+export const db = {
+  query: async () => { throw new Error('Direct DB queries disabled - use API routes') },
 }
 
-export async function getClient() {
-  const client = await pool.connect()
-  const originalQuery = client.query.bind(client)
-  const release = client.release.bind(client)
-  let lastQuery: unknown[] = []
-  client.query = (...args: unknown[]) => {
-    lastQuery = args
-    return (originalQuery as (...a: unknown[]) => unknown)(...args)
-  }
-  client.release = () => {
-    client.query = originalQuery
-    client.release = release
-    return release()
-  }
-  return client
-}
+export default db

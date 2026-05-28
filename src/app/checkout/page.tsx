@@ -49,6 +49,23 @@ export default function CheckoutPage() {
       })
       const data = await res.json()
       if (res.ok) {
+        // Save to localStorage so track page works even after server restart
+        try {
+          const stored = JSON.parse(localStorage.getItem('ta_orders') || '{}')
+          stored[data.order_number] = {
+            order_number: data.order_number,
+            status: 'pending',
+            customer_name: `${customer.firstName} ${customer.lastName}`,
+            total,
+            currency,
+            delivery_zone: selectedZone,
+            created_at: new Date().toISOString(),
+            estimated_delivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+            items: items.map(i => ({ name: i.name, quantity: i.quantity, price: currency === 'USD' ? i.price_usd : i.price_zig })),
+            driver: null,
+          }
+          localStorage.setItem('ta_orders', JSON.stringify(stored))
+        } catch {}
         clearCart()
         router.push(`/checkout/success?order=${data.order_number}`)
       } else {

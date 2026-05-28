@@ -45,9 +45,7 @@ export default function AdminPromotionsPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-gray-400 hover:text-white text-sm">← Dashboard</Link>
-          <h1 className="font-bold">Promotions & Discounts</h1>
+        <div className="flex items-center gap-4">          <h1 className="font-bold">Promotions & Discounts</h1>
         </div>
         <button onClick={() => setShowAdd(true)} className="bg-ta-gold hover:bg-ta-gold-dark text-white text-sm font-semibold px-4 py-2 rounded transition-colors">
           + Create Promo

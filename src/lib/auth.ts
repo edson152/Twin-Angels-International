@@ -1,35 +1,21 @@
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_production'
-
-export interface JWTPayload {
+// Simple auth helper - no JWT/bcrypt dependency needed
+export interface TokenPayload {
   userId: number
   email: string
-  role: 'customer' | 'admin' | 'it_support' | 'warehouse' | 'dispatch'
+  role: string
+  exp: number
 }
 
-export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
-}
-
-export function verifyToken(token: string): JWTPayload | null {
+export function parseToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload
+    return JSON.parse(Buffer.from(token, 'base64').toString())
   } catch {
     return null
   }
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12)
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash)
-}
-
-export function getTokenFromHeader(authHeader: string | null): string | null {
-  if (!authHeader?.startsWith('Bearer ')) return null
-  return authHeader.slice(7)
+export function isTokenValid(token: string): boolean {
+  const payload = parseToken(token)
+  if (!payload) return false
+  return payload.exp > Date.now()
 }

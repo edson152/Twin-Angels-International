@@ -29,9 +29,7 @@ export default function AdminPaymentsPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-gray-400 hover:text-white text-sm">← Dashboard</Link>
-          <h1 className="font-bold">Payment Verification</h1>
+        <div className="flex items-center gap-4">          <h1 className="font-bold">Payment Verification</h1>
         </div>
         <span className="bg-yellow-900/40 border border-yellow-700/50 text-yellow-400 text-xs px-3 py-1 rounded-full font-semibold">
           {payments.filter(p => p.status === 'pending').length} pending
