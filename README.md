@@ -263,7 +263,7 @@ Vercel is the recommended host for Next.js. It's free to start.
    git init
    git add .
    git commit -m "Initial commit — Twin Angels e-commerce"
-   git remote add origin https://github.com/edson152/Twin-Angels-International.git
+   git remote add origin https://github.com/YOUR_USERNAME/twin-angels.git
    git push -u origin main
    ```
 

@@ -7,13 +7,13 @@ import { useAdminStore } from '@/lib/adminStore'
 const NAV = [
   { href: '/admin',             icon: '📊', label: 'Dashboard',           exact: true  },
   { href: '/admin/orders',      icon: '📋', label: 'Orders'                            },
-  { href: '/admin/products',    icon: '🛍️', label: 'Products'                          },
-  { href: '/admin/banners',     icon: '🖼️', label: 'Banners'                           },
+  { href: '/admin/products',    icon: '🛒', label: 'Products'                          },
+  { href: '/admin/banners',     icon: '🖼',  label: 'Banners'                           },
   { href: '/admin/payments',    icon: '✅', label: 'Payments'                          },
   { href: '/admin/promotions',  icon: '🎯', label: 'Promotions'                        },
-  { href: '/admin/delivery',    icon: '🗺️', label: 'Delivery Zones'                    },
+  { href: '/admin/delivery',    icon: '🗺',  label: 'Delivery Zones'                    },
   { href: '/admin/drivers',     icon: '🚚', label: 'Drivers'                           },
-  { href: '/admin/settings',    icon: '⚙️', label: 'Settings'                          },
+  { href: '/admin/settings',    icon: '⚙',  label: 'Settings'                          },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
