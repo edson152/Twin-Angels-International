@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { CATEGORIES, WHATSAPP_SUPPORT } from '@/lib/constants'
 
-// Fallback product data if slug doesn't match admin store
+// Fallback product data if slug doesn&apos;t match admin store
 const FALLBACK_PRODUCTS: Record<string, any> = {
   'portland-cement-50kg': { id: 1, name: 'Portland Cement 50kg Bag', category: 'Building Materials', category_slug: 'building-materials', description: 'High-strength Portland cement, ideal for all construction works including bricklaying, plastering, and concrete production.\n\nThis premium cement meets ZABS standards and is suitable for both residential and commercial construction.\n\nKey Features:\n- 50kg per bag\n- CEM II/B-L 32.5N strength class\n- Suitable for general construction\n- ZABS certified', price_usd: 12, price_zig: 840, compare_price_usd: 15, stock: 500, is_on_sale: true, sku: 'BM-PC-50KG', images: [] },
   'executive-leather-office-chair': { id: 2, name: 'Executive Leather Chair', category: 'Office Furniture', category_slug: 'office-furniture', description: 'Premium executive leather office chair with lumbar support and adjustable height.', price_usd: 185, price_zig: 12950, compare_price_usd: 220, stock: 15, is_on_sale: true, sku: 'OF-ELC-001', images: [] },
@@ -174,7 +174,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               )}
               <a
-                href={`https://wa.me/${WHATSAPP_SUPPORT}?text=Hi, I'm interested in: ${product.name}`}
+                href={`https://wa.me/${WHATSAPP_SUPPORT}?text=Hi, I&apos;m interested in: ${product.name}`}
                 target="_blank" rel="noopener noreferrer"
                 className="border border-green-500 text-green-600 hover:bg-green-50 font-semibold px-4 rounded-sm transition-colors text-sm flex items-center gap-1.5 uppercase tracking-wide py-3"
               >

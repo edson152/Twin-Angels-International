@@ -34,7 +34,7 @@ export default function AdminPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Admin Dashboard 👋</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {mounted ? settings.site_name : 'Twin Angels'} — manage your store from here.
+          {mounted ? settings.site_name : 'Twin Angels&apos;} — manage your store from here.
         </p>
       </div>
 
