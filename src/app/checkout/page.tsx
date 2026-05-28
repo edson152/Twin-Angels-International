@@ -55,7 +55,7 @@ export default function CheckoutPage() {
           stored[data.order_number] = {
             order_number: data.order_number,
             status: 'pending',
-            customer_name: `${customer.firstName} ${customer.lastName}`,
+            customer_name: `${form.firstName} ${form.lastName}`,
             total,
             currency,
             delivery_zone: selectedZone,
