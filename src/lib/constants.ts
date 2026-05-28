@@ -12,12 +12,12 @@ export const CURRENCIES = {
   ZIG: { code: 'ZIG', symbol: 'ZiG', name: 'Zimbabwe Gold' },
 } as const
 
-export const PAYMENT_METHODS = [
-  { id: 'ecocash', name: 'EcoCash', icon: '📱', currencies: ['USD', 'ZIG'] },
-  { id: 'onemoney', name: 'OneMoney', icon: '💳', currencies: ['USD', 'ZIG'] },
-  { id: 'innbucks', name: 'InnBucks', icon: '🏦', currencies: ['USD', 'ZIG'] },
-  { id: 'bank_transfer', name: 'Bank Transfer', icon: '🏛️', currencies: ['USD', 'ZIG'] },
-  { id: 'visa_mastercard', name: 'Visa / Mastercard', icon: '💳', currencies: ['USD'] },
+export const PAYMENT_METHODS: { id: string; name: string; icon: string; currencies: ('USD' | 'ZIG')[] }[] = [
+  { id: 'ecocash',        name: 'EcoCash',          icon: '📱', currencies: ['USD', 'ZIG'] },
+  { id: 'onemoney',       name: 'OneMoney',          icon: '💳', currencies: ['USD', 'ZIG'] },
+  { id: 'innbucks',       name: 'InnBucks',          icon: '🏦', currencies: ['USD', 'ZIG'] },
+  { id: 'bank_transfer',  name: 'Bank Transfer',     icon: '🏛',  currencies: ['USD', 'ZIG'] },
+  { id: 'visa_mastercard',name: 'Visa / Mastercard', icon: '💳', currencies: ['USD'] },
 ] as const
 
 export const ORDER_STATUSES = {
